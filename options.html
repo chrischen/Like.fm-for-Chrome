@@ -1,0 +1,109 @@
+<html>
+<head><title>My Test Extension Options</title>
+<script type="text/javascript" src="lib/jquery.min.js"></script>
+<script type="text/javascript" src="lib/crypto-min.js"></script>
+<script type="text/javascript" src="lib/md5-min.js"></script>
+<script type="text/javascript" src="lib/main.js"></script>
+<script type="text/javascript">
+$(document).ready(function() {
+    $("#linked").hide();
+//    delete localStorage['session_key'];
+//    delete localStorage['s_session'];
+//    delete localStorage['token'];
+//    delete localStorage['name'];
+
+    if (localStorage['token']) {
+        var args = {
+            'method': 'auth.getSession',
+            'api_key': 'ac5dbe86ac1e96c2d31f8d1d',
+            'token': localStorage['token']
+        };
+        args['api_sig'] = calculateSignature(args,'4c5fbddec6eea1aecedaa2ff');
+
+        // Get session with token
+        $.get('http://like.fm/api/1.0',args,function(data) {
+            if(data['error']) {
+                delete localStorage['token'];
+            }
+
+            if (data['session']['name'] && data['session']['key']) {
+                localStorage['name'] = data['session']['name'];
+                localStorage['session_key'] = data['session']['key'];
+            }
+        },'json');
+    }
+
+    if (localStorage['name'] && localStorage['session_key']) {
+        $("#username").html('<a href="http://like.fm/' + localStorage['name'] + '">' + localStorage['name'] + '</a>');
+        $("#linked").show();
+
+        if (!localStorage['touch'] || !localStorage['finish'] || !localStorage['s_session'])
+            LikeFM.handshake();
+
+        if (localStorage['token'])
+            delete localStorage['token'];
+
+        // Todo: Check if session is valid
+    }
+});
+
+
+function link() {
+    var args = {
+        method:'auth.getToken',
+        api_key:'ac5dbe86ac1e96c2d31f8d1d'
+    }
+    args['api_sig'] = calculateSignature(args,'4c5fbddec6eea1aecedaa2ff');
+
+    if (localStorage['token']) {
+        window.location = 'http://like.fm/api/auth/?api_key=' + args['api_key'] + '&token=' + localStorage['token'];
+    } else {
+        $.get('http://like.fm/api/1.0',args,function(data) {
+            localStorage['token'] = data['token'];
+            window.location = 'http://like.fm/api/auth/?api_key=' + args['api_key'] + '&token=' + data['token'];
+        },'json');
+    }
+}
+// Saves options to localStorage.
+function save_options() {
+//  var select = document.getElementById("color");
+//  var color = select.children[select.selectedIndex].value;
+//  localStorage["favorite_color"] = color;
+//
+//  // Update status to let user know options were saved.
+//  var status = document.getElementById("status");
+//  status.innerHTML = "Options Saved.";
+//  setTimeout(function() {
+//    status.innerHTML = "";
+//  }, 750);
+}
+
+// Restores select box state to saved value from localStorage.
+function restore_options() {
+  var favorite = localStorage["favorite_color"];
+  if (!favorite) {
+    return;
+  }
+  var select = document.getElementById("color");
+  for (var i = 0; i < select.children.length; i++) {
+    var child = select.children[i];
+    if (child.value == favorite) {
+      child.selected = "true";
+      break;
+    }
+  }
+}
+
+</script>
+</head>
+<body onload="restore_options()">
+    
+    <div id="linked">This extension is linked to: <span id="username"></span></div>
+    <div id="unlinked">
+        <div id="link-notice">Link your account in the window opened and then come back and refresh this page.</div>
+        <a href="#" onclick="link(); return false;">Link your Like.fm account</a> to this extension.
+    </div>
+
+<br>
+</body>
+</html>

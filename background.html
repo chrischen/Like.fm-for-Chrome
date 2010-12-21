@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script type="text/javascript" src="lib/jquery.min.js"></script>
+    <script type="text/javascript" src="lib/crypto-min.js"></script>
+    <script type="text/javascript" src="lib/md5-min.js"></script>
+    <script type="text/javascript" src="lib/main.js"></script>
+    <script>
+
+    // Comm link with content script
+    chrome.extension.onRequest.addListener(
+    function(track, sender, sendResponse) {
+        if (track.messageType == 'track') {
+            if (track.data.title) {
+                // Explicit track
+                LikeFM.currentTrack = track.data;
+                
+                if (track.data.type == 'touch')
+                    LikeFM.sendTouchSignal(false);
+                else
+                    LikeFM.sendFinishSignal();
+            } else if (track.data.query) {
+                // Only report track if no report timestamp found, or track is different, or if timeout has passed for current track
+                //if (!LikeFM.timestamp || track.data != LikeFM.rawTrack || (new Date().getTime() - LikeFM.timestamp) > 60000) {
+                    //LikeFM.timestamp = new Date().getTime();
+                // Minimal control
+                    // var track = ...
+                var args = {
+                    method: 'track.normalize', // Like.fm only api method
+                    q: track.data.query
+                };
+
+                $.get('http://like.fm/api/1.0/',args,function(nTrack,code) {
+                    if (!nTrack.error) {
+                        nTrack.lsource = track.data.lsource;
+                        nTrack.source = track.data.source;
+
+                        LikeFM.currentTrack = nTrack;
+                        
+                        if (track.data.type == 'touch') {
+                            LikeFM.sendTouchSignal(false);
+                        }
+                        else
+                            LikeFM.sendFinishSignal();
+                        
+                       // LikeFM.sendTouchSignal(true);
+                    }
+                },'json');
+
+                //LikeFM.rawTrack = track.data;
+                
+                //}
+            }
+        } else if (track.messageType == 'link') {
+            // Link account
+            var args = {
+                method:'auth.getToken',
+                api_key:'ac5dbe86ac1e96c2d31f8d1d'
+            }
+            args['api_sig'] = calculateSignature(args,'4c5fbddec6eea1aecedaa2ff');
+
+            if (localStorage['token']) {
+                chrome.tabs.create({
+                        url:"https://like.fm/api/auth/?api_key=" + args['api_key'] + "&token=" + localStorage['token']
+                    });
+            } else {
+                $.get('http://like.fm/api/1.0',args,function(data,code) {
+                    localStorage['token'] = data['token'];
+                    chrome.tabs.create({
+                        url:"https://like.fm/api/auth/?api_key=" + args['api_key'] + "&token=" + data['token']
+                    });
+                },'json');
+            }
+        } else if (track.messageType == 'getSession') {
+            // Grab session and init session
+            if (localStorage['token']) {
+                var args = {
+                    'method': 'auth.getSession',
+                    'api_key': 'ac5dbe86ac1e96c2d31f8d1d',
+                    'token': localStorage['token']
+                };
+                args['api_sig'] = calculateSignature(args,'4c5fbddec6eea1aecedaa2ff');
+
+                // Get session with token
+                $.get('http://like.fm/api/1.0',args,function(data) {
+                    if(data['error']) {
+                        delete localStorage['token'];
+                    }
+
+                    if (data['session']['name'] && data['session']['key']) {
+                        localStorage['name'] = data['session']['name'];
+                        localStorage['session_key'] = data['session']['key'];
+                        LikeFM.handshake();
+                        delete localStorage['token'];
+                    }
+                },'json');
+            }
+        } else if (track.messageType == 'checkSession') {
+            if (!localStorage['session_key'])
+                sendResponse(true);
+            else
+                sendResponse(false);
+        }
+
+        sendResponse({});
+    });
+          
+    // Called when the url of a tab changes.
+    function checkUrl(tabId, changeInfo, tab) {
+        if (changeInfo.status == 'loading') {
+            //LikeFM.handshake();
+            //LikeFM.currentTrack = null;
+            //LikeFM.rawTrack = null;
+            chrome.tabs.executeScript(tabId,
+                    {file:"globalInject.js"});
+            if (tab.url.match(/^https?:\/\/(?:www.)?pandora.com/i)) {
+                chrome.pageAction.show(tabId);
+                LikeFM.initPandora(tabId);
+            }
+            else if (tab.url.match(/^https?:\/\/(?:www.)?youtube.com/i)) {
+                chrome.pageAction.show(tabId);
+                LikeFM.initYoutube(tabId);
+            } else if (tab.url.match(/^https?:\/\/(?:listen.)?grooveshark.com/i)) {
+                chrome.pageAction.show(tabId);
+                LikeFM.initGrooveshark(tabId);
+            } else if (tab.url.match(/^https?:\/\/(?:www.)?meemix.com/i)) {
+                chrome.pageAction.show(tabId);
+                LikeFM.initMeemix(tabId);
+            }
+        }
+
+    }
+      
+      // Listen for any changes to the URL of any tab.
+      chrome.tabs.onUpdated.addListener(checkUrl);
+    </script>
+  </head>
+</html>

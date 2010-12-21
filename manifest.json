@@ -1,0 +1,32 @@
+{
+  "name": "Like.fm Social Music Tracker",
+  "version": "1.0.10",
+  "description": "Keep track of and share with friends the music you listen to from iTunes, YouTube, Pandora, Grooveshark, and more.",
+  "background_page": "background.html",
+  "options_page":"options.html",
+  "page_action" :
+  {
+    "default_icon" : "icon-32.png",
+    "default_title" : "This site supports Like.fm"
+  },
+  "permissions" : [
+    "tabs", 
+    "http://*.youtube.com/*",
+    "http://*.pandora.com/*",
+    "http://*.grooveshark.com/*",
+    "http://*.meemix.com/*",
+    "http://youtube.com/*",
+    "http://pandora.com/*",
+    "http://grooveshark.com/*",
+    "http://meemix.com/*",
+    "http://like.fm/*",
+    "http://*.like.fm/*",
+    "https://like.fm/*",
+    "https://*.like.fm/*"
+  ],
+  "icons" : {
+    "16" : "icon-16.png",
+    "48" : "icon-48.png",
+    "128" : "icon-128.png"
+  }
+}
