@@ -1,10 +1,24 @@
 var LikeFM = {};
 
 function fireTrackEvent(data) {
+    // Context of the page
     var hiddenDiv = document.getElementById('LikeFMComm');
     hiddenDiv.innerText = JSON.stringify(data);
     hiddenDiv.dispatchEvent(trackEvent);
+
+    if (data.status == 'playing' && !LikeFM.statusInterval) {
+        // Song has started playing - start polling
+        LikeFM.statusInterval = setInterval(function() {
+            var status = Grooveshark.getCurrentSongStatus();
+            status.statusUpdate = true;
+            fireTrackEvent(status);
+        },500);
+    } else if (data.status == 'completed') {
+        clearInterval(LikeFM.statusInterval);
+        LikeFM.statusInterval = null;
+    }
 }
+
 function LikeFMInject () {
     // Comm link with content script
     trackEvent = document.createEvent('Event');
@@ -25,7 +39,7 @@ function LikeFMInject () {
 if (!document.getElementById("LikeFMInject")) {
     var script = document.createElement('script');
     script.setAttribute('id','LikeFMInject');
-    script.appendChild(document.createTextNode('var trackEvent;' + fireTrackEvent + '('+ LikeFMInject +')();'));
+    script.appendChild(document.createTextNode('var LikeFM = {}; var trackEvent;' + fireTrackEvent + '('+ LikeFMInject +')();'));
     (document.body || document.head || document.documentElement).appendChild(script);
 }
 
@@ -43,13 +57,7 @@ if (!document.getElementById("LikeFMComm")) {
         track.lsource = 'Grooveshark';
         track.source = 'P';
 
-        if (data.song.position == 0
-            && (
-                    (LikeFM.currentTrack
-                        && (data.song.songName != LikeFM.currentTrack.title || data.song.artistName != LikeFM.currentTrack.artist)
-                    ) || !LikeFM.currentTrack
-                )
-        ) {
+        if (data.status == 'playing' && !data.statusUpdate) {
             track.title = data.song.songName;
             track.artist = data.song.artistName;
             track.album = data.song.albumName;
