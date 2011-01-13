@@ -126,6 +126,9 @@
             } else if (tab.url.match(/^https?:\/\/(?:www.)?meemix.com/i)) {
                 chrome.pageAction.show(tabId);
                 LikeFM.initMeemix(tabId);
+            } else if (tab.url.match(/^https?:\/\/(?:www.)?earbits.com/i)) {
+                chrome.pageAction.show(tabId);
+                LikeFM.initEarbits(tabId);
             }
         }
 

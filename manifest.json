@@ -10,19 +10,9 @@
     "default_title" : "This site supports Like.fm"
   },
   "permissions" : [
-    "tabs", 
-    "http://*.youtube.com/*",
-    "http://*.pandora.com/*",
-    "http://*.grooveshark.com/*",
-    "http://*.meemix.com/*",
-    "http://youtube.com/*",
-    "http://pandora.com/*",
-    "http://grooveshark.com/*",
-    "http://meemix.com/*",
-    "http://like.fm/*",
-    "http://*.like.fm/*",
-    "https://like.fm/*",
-    "https://*.like.fm/*"
+    "tabs",
+    "http://*/*",
+    "https://*/*"
   ],
   "icons" : {
     "16" : "icon-16.png",
