@@ -47,6 +47,8 @@ if (!document.getElementById("LikeFMInject")) {
 if (!document.getElementById("LikeFMComm")) {
     var comm = document.createElement('div');
     comm.setAttribute('id','LikeFMComm');
+    comm.style.display = "none";
+
     (document.body || document.documentElement).appendChild(comm);
 
     // Comm link with injected script

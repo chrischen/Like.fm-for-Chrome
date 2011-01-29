@@ -129,9 +129,11 @@
             } else if (tab.url.match(/^https?:\/\/(?:www.)?earbits.com/i)) {
                 chrome.pageAction.show(tabId);
                 LikeFM.initEarbits(tabId);
+            } else if (tab.url.match(/^https?:\/\/(?:www.)?rdio.com/i)) {
+                chrome.pageAction.show(tabId);
+                LikeFM.initRdio(tabId);
             }
         }
-
     }
       
       // Listen for any changes to the URL of any tab.

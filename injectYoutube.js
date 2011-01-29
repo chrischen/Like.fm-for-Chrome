@@ -43,6 +43,7 @@ var LikeFMInject = function() {
     window['onYouTubePlayerReady'] = function(){
         document.getElementById("movie_player").addEventListener("onStateChange",'fireTrackEvent');
     };
+    document.getElementById("movie_player").addEventListener("onStateChange",'fireTrackEvent');
 };
 
 // Inject interface with page scripts
