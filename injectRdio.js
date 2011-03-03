@@ -15,7 +15,7 @@ function fireTrackEvent(data,posUpdate) {
     }
 
     var hiddenDiv = document.getElementById('LikeFMComm');
-    hiddenDiv.innerText = JSON.stringify(track);
+    hiddenDiv.textContent = JSON.stringify(track);
     hiddenDiv.dispatchEvent(__lfm_trackEvent);
 }
 

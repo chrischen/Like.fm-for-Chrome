@@ -1,6 +1,6 @@
 function fireTrackEvent(data) {
     var hiddenDiv = document.getElementById('LikeFMComm');
-    hiddenDiv.innerText = JSON.stringify(data);
+    hiddenDiv.textContent = JSON.stringify(data);
     hiddenDiv.dispatchEvent(trackEvent);
 }
 function LikeFMInject () {

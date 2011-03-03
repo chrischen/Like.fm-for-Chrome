@@ -3,7 +3,7 @@ var LikeFM = {};
 function fireTrackEvent(data) {
     // Context of the page
     var hiddenDiv = document.getElementById('LikeFMComm');
-    hiddenDiv.innerText = JSON.stringify(data);
+    hiddenDiv.textContent = JSON.stringify(data);
     hiddenDiv.dispatchEvent(trackEvent);
 
     if (data.status == 'playing' && !LikeFM.statusInterval) {

@@ -6,6 +6,30 @@
     <script type="text/javascript" src="lib/md5-min.js"></script>
     <script type="text/javascript" src="lib/main.js"></script>
     <script>
+    if (!localStorage['firstLaunch']) {
+        var args = {
+            method:'auth.getToken',
+            api_key:'ac5dbe86ac1e96c2d31f8d1d'
+        }
+        args['api_sig'] = calculateSignature(args,'4c5fbddec6eea1aecedaa2ff');
+
+        $.get('https://like.fm/api/1.0',args,function(data,code) {
+            localStorage['token'] = data['token'];
+            // Find tab with browser install page opened
+            chrome.tabs.getAllInWindow(null, function (tabs) {
+                for (x in tabs) {
+                    if (tabs[x].url.match(/^https?:\/\/(?:www.)?like.fm\/signup\/download/i)) {
+                        chrome.tabs.update(tabs[x].id,{url:"https://like.fm/api/auth/?api_key=" + args['api_key'] + "&token=" + data['token']});
+                        return false;
+                    }
+                }
+                chrome.tabs.create({
+                    url:"https://like.fm/api/auth/?api_key=" + args['api_key'] + "&token=" + data['token']
+                });
+            });
+        },'json');
+        localStorage['firstLaunch'] = true;
+    }
 
     // Comm link with content script
     chrome.extension.onRequest.addListener(
@@ -43,13 +67,31 @@
                         else
                             LikeFM.sendFinishSignal();
                         
-                       // LikeFM.sendTouchSignal(true);
                     }
                 },'json');
 
                 //LikeFM.rawTrack = track.data;
                 
                 //}
+            } else if (track.data.amazonLink) {
+                $.get(track.data.amazonLink,function(data){
+                    var ext = document.createElement("div");
+                    ext.setAttribute("id","ext-root");
+                    ext.innerHTML = data;
+                    $("body")[0].appendChild(ext);
+                    
+                    track.data.title = $("#btAsinTitle").text();
+                    track.data.artist = $("#btAsinTitle").parent().next().text();
+
+                    LikeFM.currentTrack = track.data;
+                        
+                    if (track.data.type == 'touch') {
+                        LikeFM.sendTouchSignal(false);
+                    }
+                    else
+                        LikeFM.sendFinishSignal();
+
+                });
             }
         } else if (track.messageType == 'link') {
             // Link account
@@ -64,7 +106,7 @@
                         url:"https://like.fm/api/auth/?api_key=" + args['api_key'] + "&token=" + localStorage['token']
                     });
             } else {
-                $.get('http://like.fm/api/1.0',args,function(data,code) {
+                $.get('https://like.fm/api/1.0',args,function(data,code) {
                     localStorage['token'] = data['token'];
                     chrome.tabs.create({
                         url:"https://like.fm/api/auth/?api_key=" + args['api_key'] + "&token=" + data['token']
@@ -82,7 +124,7 @@
                 args['api_sig'] = calculateSignature(args,'4c5fbddec6eea1aecedaa2ff');
 
                 // Get session with token
-                $.get('http://like.fm/api/1.0',args,function(data) {
+                $.get('https://like.fm/api/1.0',args,function(data) {
                     if(data['error']) {
                         delete localStorage['token'];
                     }
@@ -116,8 +158,7 @@
             if (tab.url.match(/^https?:\/\/(?:www.)?pandora.com/i)) {
                 chrome.pageAction.show(tabId);
                 LikeFM.initPandora(tabId);
-            }
-            else if (tab.url.match(/^https?:\/\/(?:www.)?youtube.com/i)) {
+            } else if (tab.url.match(/^https?:\/\/(?:www.)?youtube.com/i)) {
                 chrome.pageAction.show(tabId);
                 LikeFM.initYoutube(tabId);
             } else if (tab.url.match(/^https?:\/\/(?:listen.)?grooveshark.com/i)) {
@@ -132,6 +173,9 @@
             } else if (tab.url.match(/^https?:\/\/(?:www.)?rdio.com/i)) {
                 chrome.pageAction.show(tabId);
                 LikeFM.initRdio(tabId);
+            } else if (tab.url.match(/^https?:\/\/(?:www.)?like.fm/i)) {
+                chrome.pageAction.show(tabId);
+                LikeFM.initSupported(tabId);
             }
         }
     }
