@@ -59,7 +59,13 @@ if (!document.getElementById("LikeFMComm")) {
         track.lsource = 'Grooveshark';
         track.source = 'P';
 
-        if (data.status == 'playing' && !data.statusUpdate) {
+        if (data.song.position == 0
+            && (
+                (LikeFM.currentTrack
+                    && (data.song.songName != LikeFM.currentTrack.title || data.song.artistName != LikeFM.currentTrack.artist)
+                ) || !LikeFM.currentTrack
+            )
+        ) {
             track.title = data.song.songName;
             track.artist = data.song.artistName;
             track.album = data.song.albumName;
