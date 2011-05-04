@@ -2,6 +2,7 @@ function determineAndSendTrack(type) {
    if (document.getElementById("watch-description-extra-info")) {
         var nodes = null;
         var trackEl = null;
+        var trackExtUrl = null;
         var track = {};
         track.lsource = 'YouTube';
         track.source = 'P';
@@ -11,12 +12,12 @@ function determineAndSendTrack(type) {
             // Check for Amazon Link
             for (var a in anchors) {
                 if (anchors[a].textContent == "AmazonMP3") {
-                    trackEl = anchors[a].getAttribute("href");
+                    trackExtUrl = anchors[a].getAttribute("href");
                 }
             }
         }
 
-        if (!trackEl && document.getElementById("watch-description")) {
+        if (!trackExtUrl && document.getElementById("watch-description")) {
             nodes = document.getElementById("watch-description").childNodes;
             // Check for tagging
             for (var i in nodes) {
@@ -36,24 +37,46 @@ function determineAndSendTrack(type) {
 
             // Send message to background process
             chrome.extension.sendRequest({messageType: "track",data:track});
-        } else if (trackEl) {
+            // Send to the UI status
+            // ...
+        } else if (trackExtUrl) {
             track.type = type;
-            track.amazonLink = trackEl;
+            track.amazonLink = trackExtUrl;
             // Send message to background process
             chrome.extension.sendRequest({messageType: "track",data:track});
+            // Send to the UI status
+            // ...
         } else if (document.getElementById("eow-category").childNodes[0].textContent.match(/Music|Musik|Música|Musika|Musique|Glazba|Musica|Zene|Muziek|Musikk|Muzyka|Музыка|Hudba|Musiikki|Μουσική|Музика|מוסיקה|संगीत|音乐|音樂|音楽|음악/i)) { // English (both), Dansk, Deutsh, Espangnol (both), Filipino, Francais, Hrvatski, Italiano, Magyar, Nederlands, Norsk, Polski, Portugues (both), Pyccĸий, Slovenský, Suomi, Svenska, Čeština, Ελληνικά, Српски, עברית, हिन्द, 中文 (both), 日本語, 한국어
             track.query = document.getElementById("eow-title").textContent;
             track.type = type;
             // Send message to background process
             chrome.extension.sendRequest({messageType: "track",data:track});
+            // Send to the UI status
+            // ...
         }
     }
 }
+
 // Injected functions
 function fireTrackEvent(newState) {
-  var hiddenDiv = document.getElementById('LikeFMComm');
-  hiddenDiv.textContent = JSON.stringify(newState);
-  hiddenDiv.dispatchEvent(__lfm_trackEvent);
+    if ( newState == 1 ) {
+        if (!LikeFM.statusInterval) {
+            LikeFM.statusInterval = setInterval(function() {
+                var player = document.getElementById("movie_player");
+                if (player.getCurrentTime() > player.getDuration() * 0.6) {
+                    fireTrackEvent('finish');
+                    clearInterval(LikeFM.statusInterval);
+                }
+            },500);
+        }
+    } else if ( newState == 0 ) {
+        clearInterval(LikeFM.statusInterval);
+        LikeFM.statusInterval = null;
+    }
+
+    var hiddenDiv = document.getElementById('LikeFMComm');
+    hiddenDiv.textContent = JSON.stringify(newState);
+    hiddenDiv.dispatchEvent(__lfm_trackEvent);
 
 };
 
@@ -73,7 +96,7 @@ var LikeFMInject = function() {
 if (!document.getElementById("LikeFMInject")) {
     var script = document.createElement('script');
     script.setAttribute('id','LikeFMInject');
-    script.appendChild(document.createTextNode('var __lfm_trackEvent; var __lfm_originalFunc=function(){};if (window[\'onYouTubePlayerReady\']) __lfm_originalFunc = window[\'onYouTubePlayerReady\'];' + fireTrackEvent + '(' + LikeFMInject +')();'));
+    script.appendChild(document.createTextNode('var LikeFM = {}; var __lfm_trackEvent; var __lfm_originalFunc=function(){};if (window[\'onYouTubePlayerReady\']) __lfm_originalFunc = window[\'onYouTubePlayerReady\'];' + fireTrackEvent + '(' + LikeFMInject +')();'));
     document.documentElement.getElementsByTagName("HEAD")[0].appendChild(script);
 }
 
@@ -89,10 +112,9 @@ if (!document.getElementById("LikeFMComm")) {
     comm.addEventListener('myTrackEvent', function() {
         var newState = JSON.parse(comm.textContent);
         if (newState == 1) {
-           determineAndSendTrack('touch');
-        } else if (newState == 0) {
+            determineAndSendTrack('touch');
+        } else if (newState == 'finish') {
             determineAndSendTrack('finish');
         }
-        
     });
 }

@@ -1,7 +1,7 @@
 {
   "name": "Like.fm Social Music Tracker",
-  "version": "1.0.16",
-  "description": "Keep track of and share with friends the music you listen to from iTunes, YouTube, Pandora, Grooveshark, and more.",
+  "version": "1.1.0",
+  "description": "Like.fm tracks all the music you play online and automatically shows you the top songs you and your friends play.",
   "background_page": "background.html",
   "options_page":"options.html",
   "page_action" :
@@ -13,6 +13,13 @@
     "tabs",
     "http://*/*",
     "https://*/*"
+  ],
+  "content_scripts": [
+  {
+      "matches": ["https://like.fm/api/*"],
+      "js": ["lib/jquery.min.js", "statusBoxInject.js"],
+      "all_frames": true
+  }
   ],
   "icons" : {
     "16" : "icon-16.png",

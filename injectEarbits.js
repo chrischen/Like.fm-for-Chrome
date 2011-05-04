@@ -1,23 +1,22 @@
 function fireTrackEvent(data) {
     var hiddenDiv = document.getElementById('LikeFMComm');
     hiddenDiv.innerText = JSON.stringify(data);
-    hiddenDiv.dispatchEvent(trackEvent);
+    hiddenDiv.dispatchEvent(__lfm_trackEvent);
 }
 function LikeFMInject () {
     // Comm link with content script
-    trackEvent = document.createEvent('Event');
-    trackEvent.initEvent('myTrackEvent', true, true);
+    __lfm_trackEvent = document.createEvent('Event');
+    __lfm_trackEvent.initEvent('myTrackEvent', true, true);
 
-      var player = $("#player-container");
+    EbApp.bindEvent("track-started", function(event, track){
+        fireTrackEvent({title:track.get("name"),artist:track.get("artist_name"),album:track.get("album_name"),type:'touch'});
+    });
 
-      player.bind("onTrackChanged", function(event, artist, title){
-        fireTrackEvent({title:title,artist:artist,type:'touch'});
-      });
-
-      player.bind("onTrackCompleted", function(event, artist, title){
-        fireTrackEvent({title:title,artist:artist,type:'finish'});
-      });
-
+    // can use event "track-completed" if you want to only log when the track is fully listened to (i.e. when the player advances to the next track automatically)
+    EbApp.bindEvent("track-listened", function(event, track){
+        fireTrackEvent({title:track.get("name"),artist:track.get("artist_name"),album:track.get("album_name"),type:'finish'});
+    });
+      
 }
 
 // Below is in the context of content script
@@ -26,7 +25,7 @@ function LikeFMInject () {
 if (!document.getElementById("LikeFMInject")) {
     var script = document.createElement('script');
     script.setAttribute('id','LikeFMInject');
-    script.appendChild(document.createTextNode('var trackEvent;' + fireTrackEvent + '('+ LikeFMInject +')();'));
+    script.appendChild(document.createTextNode('var __lfm_trackEvent;' + fireTrackEvent + '('+ LikeFMInject +')();'));
     (document.body || document.head || document.documentElement).appendChild(script);
 }
 

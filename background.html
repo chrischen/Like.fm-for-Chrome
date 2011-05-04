@@ -6,179 +6,231 @@
     <script type="text/javascript" src="lib/md5-min.js"></script>
     <script type="text/javascript" src="lib/main.js"></script>
     <script>
-    if (!localStorage['firstLaunch']) {
-        var args = {
-            method:'auth.getToken',
-            api_key:'ac5dbe86ac1e96c2d31f8d1d'
-        }
-        args['api_sig'] = calculateSignature(args,'4c5fbddec6eea1aecedaa2ff');
-
-        $.get('https://like.fm/api/1.0',args,function(data,code) {
-            localStorage['token'] = data['token'];
-            // Find tab with browser install page opened
-            chrome.tabs.getAllInWindow(null, function (tabs) {
-                for (x in tabs) {
-                    if (tabs[x].url.match(/^https?:\/\/(?:www.)?like.fm\/signup\/download/i)) {
-                        chrome.tabs.update(tabs[x].id,{url:"https://like.fm/api/auth/?api_key=" + args['api_key'] + "&token=" + data['token']});
-                        return false;
-                    }
-                }
-                chrome.tabs.create({
-                    url:"https://like.fm/api/auth/?api_key=" + args['api_key'] + "&token=" + data['token']
-                });
-            });
-        },'json');
-        localStorage['firstLaunch'] = true;
-    }
-
-    // Comm link with content script
-    chrome.extension.onRequest.addListener(
-    function(track, sender, sendResponse) {
-        if (track.messageType == 'track') {
-            if (track.data.title) {
-                // Explicit track
-                LikeFM.currentTrack = track.data;
-                
-                if (track.data.type == 'touch')
-                    LikeFM.sendTouchSignal(false);
-                else
-                    LikeFM.sendFinishSignal();
-            } else if (track.data.query) {
-                // Only report track if no report timestamp found, or track is different, or if timeout has passed for current track
-                //if (!LikeFM.timestamp || track.data != LikeFM.rawTrack || (new Date().getTime() - LikeFM.timestamp) > 60000) {
-                    //LikeFM.timestamp = new Date().getTime();
-                // Minimal control
-                    // var track = ...
-                var args = {
-                    method: 'track.normalize', // Like.fm only api method
-                    q: track.data.query
-                };
-
-                $.get('http://like.fm/api/1.0/',args,function(nTrack,code) {
-                    if (!nTrack.error) {
-                        nTrack.lsource = track.data.lsource;
-                        nTrack.source = track.data.source;
-
-                        LikeFM.currentTrack = nTrack;
-                        
-                        if (track.data.type == 'touch') {
-                            LikeFM.sendTouchSignal(false);
-                        }
-                        else
-                            LikeFM.sendFinishSignal();
-                        
-                    }
-                },'json');
-
-                //LikeFM.rawTrack = track.data;
-                
-                //}
-            } else if (track.data.amazonLink) {
-                $.get(track.data.amazonLink,function(data){
-                    var ext = document.createElement("div");
-                    ext.setAttribute("id","ext-root");
-                    ext.innerHTML = data;
-                    $("body")[0].appendChild(ext);
-                    
-                    track.data.title = $("#btAsinTitle").text();
-                    track.data.artist = $("#btAsinTitle").parent().next().text();
-
-                    LikeFM.currentTrack = track.data;
-                        
-                    if (track.data.type == 'touch') {
-                        LikeFM.sendTouchSignal(false);
-                    }
-                    else
-                        LikeFM.sendFinishSignal();
-
-                });
-            }
-        } else if (track.messageType == 'link') {
-            // Link account
+        if (!localStorage['firstLaunch']) {
             var args = {
                 method:'auth.getToken',
                 api_key:'ac5dbe86ac1e96c2d31f8d1d'
             }
             args['api_sig'] = calculateSignature(args,'4c5fbddec6eea1aecedaa2ff');
 
-            if (localStorage['token']) {
-                chrome.tabs.create({
-                        url:"https://like.fm/api/auth/?api_key=" + args['api_key'] + "&token=" + localStorage['token']
-                    });
-            } else {
-                $.get('https://like.fm/api/1.0',args,function(data,code) {
-                    localStorage['token'] = data['token'];
+            $.get('https://like.fm/api/1.0',args,function(data,code) {
+                localStorage['token'] = data['token'];
+                // Find tab with browser install page opened
+                chrome.tabs.getAllInWindow(null, function (tabs) {
+                    for (x in tabs) {
+                        if (tabs[x].url.match(/^https?:\/\/(?:www.)?like.fm\/signup\/download/i)) {
+                            chrome.tabs.update(tabs[x].id,{url:"https://like.fm/api/auth/?api_key=" + args['api_key'] + "&token=" + data['token']});
+                            return false;
+                        }
+                    }
+
                     chrome.tabs.create({
                         url:"https://like.fm/api/auth/?api_key=" + args['api_key'] + "&token=" + data['token']
                     });
-                },'json');
-            }
-        } else if (track.messageType == 'getSession') {
-            // Grab session and init session
-            if (localStorage['token']) {
+                });
+            },'json');
+            localStorage['firstLaunch'] = true;
+        }
+
+        //  Page action
+        chrome.pageAction.onClicked.addListener(function(tab) {
+            chrome.tabs.sendRequest(tab.id, {messageType: "statusBox.show"}, function(response) {
+            });
+        });
+
+        // Comm link with content script
+        chrome.extension.onRequest.addListener(
+        function(track, sender, sendResponse) {
+            if (track.messageType == 'track') {
+                if (track.data.title) {
+                    // Explicit track
+                    
+                    if (track.data.type == 'touch') {
+                        LikeFM.sendTouchSignal(false,function(resp){
+                            // Display notice
+                            chrome.tabs.sendRequest(sender.tab.id, {messageType: "statusBox.show", resp: resp, session_key: localStorage["session_key"]}, function(response) {});
+                            chrome.tabs.getSelected(null,function(tab){
+                                if (tab.id != sender.tab.id) {
+                                    // Display desktop notification
+                                }
+                            });
+                        });
+                    } else
+                        LikeFM.sendFinishSignal();
+
+                    LikeFM.currentTrack = track.data;
+                } else if (track.data.query) {
+                    // Only report track if no report timestamp found, or track is different, or if timeout has passed for current track
+                    //if (!LikeFM.timestamp || track.data != LikeFM.rawTrack || (new Date().getTime() - LikeFM.timestamp) > 60000) {
+                        //LikeFM.timestamp = new Date().getTime();
+                    // Minimal control
+                        // var track = ...
+                    var args = {
+                        method: 'track.normalize', // Like.fm only api method
+                        q: track.data.query
+                    };
+
+                    $.get('https://like.fm/api/1.0/',args,function(nTrack,code) {
+                        if (!nTrack.error) {
+                            nTrack.lsource = track.data.lsource;
+                            nTrack.source = track.data.source;
+
+                            LikeFM.currentTrack = nTrack;
+                            
+                            if (track.data.type == 'touch') {
+                                LikeFM.sendTouchSignal(false,function(resp){
+                                    // Display notice
+                                    chrome.tabs.sendRequest(sender.tab.id, {messageType: "statusBox.show", resp: resp, session_key: localStorage["session_key"]}, function(response) {});
+                                    chrome.tabs.getSelected(null,function(tab){
+                                        if (tab.id != sender.tab.id) {
+                                            // Display desktop notification
+                                        }
+                                    });
+                                });
+                            }
+                            else
+                                LikeFM.sendFinishSignal();
+                        }
+                    },'json');
+
+                    //LikeFM.rawTrack = track.data;
+                    
+                    //}
+                } else if (track.data.amazonLink) {
+                    $.get(track.data.amazonLink,function(data){
+                        if (document.getElementById("ext-root")) {
+                            var ext = document.getElementById("ext-root");
+                            ext.innerHTML = data;
+                        } else {
+                            var ext = document.createElement("div");
+                            ext.setAttribute("id","ext-root");
+                            ext.innerHTML = data;
+                            $("body")[0].appendChild(ext);
+                        }
+
+                        track.data.title = $("#btAsinTitle").text();
+                        track.data.artist = $("#btAsinTitle").parent().next().text();
+
+                        LikeFM.currentTrack = track.data;
+                            
+                        if (track.data.type == 'touch') {
+                            // Get response object from TOUCH
+                            LikeFM.sendTouchSignal(false,function(resp){
+                                // Display notice
+                                chrome.tabs.sendRequest(sender.tab.id, {messageType: "statusBox.show", resp: resp, session_key: localStorage["session_key"]}, function(response) {});
+
+                                chrome.tabs.getSelected(null,function(tab){
+                                    if (tab.id != sender.tab.id) {
+                                        // Display desktop notification
+                                    }
+                                });
+                            });
+                        }
+                        else
+                            LikeFM.sendFinishSignal();
+                    });
+                }
+            } else if (track.messageType == 'link') {
+                // Link account
                 var args = {
-                    'method': 'auth.getSession',
-                    'api_key': 'ac5dbe86ac1e96c2d31f8d1d',
-                    'token': localStorage['token']
-                };
+                    method:'auth.getToken',
+                    api_key:'ac5dbe86ac1e96c2d31f8d1d'
+                }
                 args['api_sig'] = calculateSignature(args,'4c5fbddec6eea1aecedaa2ff');
 
-                // Get session with token
-                $.get('https://like.fm/api/1.0',args,function(data) {
-                    if(data['error']) {
-                        delete localStorage['token'];
-                    }
+                if (localStorage['token']) {
+                    chrome.tabs.create({
+                            url:"https://like.fm/api/auth/?api_key=" + args['api_key'] + "&token=" + localStorage['token']
+                        });
+                } else {
+                    $.get('https://like.fm/api/1.0',args,function(data,code) {
+                        localStorage['token'] = data['token'];
+                        chrome.tabs.create({
+                            url:"https://like.fm/api/auth/?api_key=" + args['api_key'] + "&token=" + data['token']
+                        });
+                    },'json');
+                }
+            } else if (track.messageType == 'getSession') {
+                // Grab session and init session
+                if (localStorage['token']) {
+                    var args = {
+                        'method': 'auth.getSession',
+                        'api_key': 'ac5dbe86ac1e96c2d31f8d1d',
+                        'token': localStorage['token']
+                    };
+                    args['api_sig'] = calculateSignature(args,'4c5fbddec6eea1aecedaa2ff');
 
-                    if (data['session']['name'] && data['session']['key']) {
-                        localStorage['name'] = data['session']['name'];
-                        localStorage['session_key'] = data['session']['key'];
-                        LikeFM.handshake();
-                        delete localStorage['token'];
-                    }
-                },'json');
-            }
-        } else if (track.messageType == 'checkSession') {
-            if (!localStorage['session_key'])
-                sendResponse(true);
-            else
-                sendResponse(false);
-        }
+                    // Get session with token
+                    $.get('https://like.fm/api/1.0',args,function(data) {
+                        if(data['error']) {
+                            delete localStorage['token'];
+                        }
 
-        sendResponse({});
-    });
-          
-    // Called when the url of a tab changes.
-    function checkUrl(tabId, changeInfo, tab) {
-        if (changeInfo.status == 'loading') {
-            //LikeFM.handshake();
-            //LikeFM.currentTrack = null;
-            //LikeFM.rawTrack = null;
-            chrome.tabs.executeScript(tabId,
-                    {file:"globalInject.js"});
-            if (tab.url.match(/^https?:\/\/(?:www.)?pandora.com/i)) {
-                chrome.pageAction.show(tabId);
-                LikeFM.initPandora(tabId);
-            } else if (tab.url.match(/^https?:\/\/(?:www.)?youtube.com/i)) {
-                chrome.pageAction.show(tabId);
-                LikeFM.initYoutube(tabId);
-            } else if (tab.url.match(/^https?:\/\/(?:listen.)?grooveshark.com/i)) {
-                chrome.pageAction.show(tabId);
-                LikeFM.initGrooveshark(tabId);
-            } else if (tab.url.match(/^https?:\/\/(?:www.)?meemix.com/i)) {
-                chrome.pageAction.show(tabId);
-                LikeFM.initMeemix(tabId);
-            } else if (tab.url.match(/^https?:\/\/(?:www.)?earbits.com/i)) {
-                chrome.pageAction.show(tabId);
-                LikeFM.initEarbits(tabId);
-            } else if (tab.url.match(/^https?:\/\/(?:www.)?rdio.com/i)) {
-                chrome.pageAction.show(tabId);
-                LikeFM.initRdio(tabId);
-            } else if (tab.url.match(/^https?:\/\/(?:www.)?like.fm/i)) {
-                chrome.pageAction.show(tabId);
-                LikeFM.initSupported(tabId);
+                        if (data['session']['name'] && data['session']['key']) {
+                            localStorage['name'] = data['session']['name'];
+                            localStorage['session_key'] = data['session']['key'];
+                            LikeFM.handshake();
+                            delete localStorage['token'];
+                        }
+                    },'json');
+                }
+            } else if (track.messageType == 'checkSession') {
+                if (!localStorage['session_key'])
+                    sendResponse(true);
+                else
+                    sendResponse(false);
+            } else if (track.messageType == 'getTrack') {
+                sendResponse(LikeFM.currentTrack);
+            } else if (track.messageType == 'statusBox.resize') {
+                var data = {};
+                data.width = track.data.width;
+                data.height = track.data.height;
+                chrome.tabs.sendRequest(sender.tab.id, {messageType: "statusBox.resize", data: data}, function(response) {});
+            } else if (track.messageType == 'statusBox.show') {
+                chrome.tabs.sendRequest(sender.tab.id, {messageType: "statusBox.show", resp: resp, session_key: localStorage["session_key"]}, function(response) {});
+            }
+
+            sendResponse({});
+        });
+              
+        // Called when the url of a tab changes.
+        function checkUrl(tabId, changeInfo, tab) {
+            if (changeInfo.status == 'loading') {
+                //LikeFM.handshake();
+                //LikeFM.currentTrack = null;
+                //LikeFM.rawTrack = null;
+                chrome.tabs.executeScript(tabId,
+                        {file:"globalInject.js"});
+                if (tab.url.match(/^https?:\/\/(?:www.)?pandora.com/i)) {
+                    chrome.pageAction.show(tabId);
+                    LikeFM.initPandora(tabId);
+                } else if (tab.url.match(/^https?:\/\/(?:www.)?youtube.com/i)) {
+                    chrome.pageAction.show(tabId);
+                    LikeFM.initYoutube(tabId);
+                } else if (tab.url.match(/^https?:\/\/(?:listen.)?grooveshark.com/i)) {
+                    chrome.pageAction.show(tabId);
+                    LikeFM.initGrooveshark(tabId);
+                } else if (tab.url.match(/^https?:\/\/(?:www.)?meemix.com/i)) {
+                    chrome.pageAction.show(tabId);
+                    LikeFM.initMeemix(tabId);
+                } else if (tab.url.match(/^https?:\/\/(?:www.)?earbits.com/i)) {
+                    chrome.pageAction.show(tabId);
+                    LikeFM.initEarbits(tabId);
+                } else if (tab.url.match(/^https?:\/\/(?:www.)?rdio.com/i)) {
+                    chrome.pageAction.show(tabId);
+                    LikeFM.initRdio(tabId);
+                } else if (tab.url.match(/^https?:\/\/(?:www.)?beta.deezer.com/i)) {
+                    chrome.pageAction.show(tabId);
+                    LikeFM.initBetaDeezer(tabId);
+                } else if (tab.url.match(/^https?:\/\/(?:www.)?www.live365.com/i)) {
+                    chrome.pageAction.show(tabId);
+                    LikeFM.initLive365(tabId);
+                } else if (tab.url.match(/^https?:\/\/(?:www.)?like.fm/i)) {
+                    chrome.pageAction.show(tabId);
+                    LikeFM.initSupported(tabId);
+                }
             }
         }
-    }
       
       // Listen for any changes to the URL of any tab.
       chrome.tabs.onUpdated.addListener(checkUrl);
