@@ -1,6 +1,6 @@
 {
   "name": "Like.fm Social Music Tracker",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Like.fm tracks all the music you play online and automatically shows you the top songs you and your friends play.",
   "background_page": "background.html",
   "options_page":"options.html",
