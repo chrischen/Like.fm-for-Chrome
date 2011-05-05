@@ -1,5 +1,3 @@
-var LikeFM = {};
-
 function fireTrackEvent(data) {
 
 	function getTrack( optionalData )

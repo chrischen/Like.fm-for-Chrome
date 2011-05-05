@@ -1,5 +1,3 @@
-var LikeFM = {};
-
 function fireTrackEvent(data,posUpdate) {
     // Context of the page
     var track = window.player_model.playingTrack;

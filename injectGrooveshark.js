@@ -1,5 +1,3 @@
-var LikeFM = {};
-
 function fireTrackEvent(data) {
     // Context of the page
     var hiddenDiv = document.getElementById('LikeFMComm');
